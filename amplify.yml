@@ -8,9 +8,6 @@ applications:
             - npm ci
         build:
           commands:
-            # Amplify SSR Lambda에서 서버 환경변수를 읽을 수 있도록 빌드 전 .env에 기록
-            - echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY" >> .env.production.local
-            - echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env.production.local
             - npm run build
       artifacts:
         baseDirectory: .next

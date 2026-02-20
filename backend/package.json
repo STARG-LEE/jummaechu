@@ -1,0 +1,26 @@
+{
+  "name": "jummaechu-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "serverless offline",
+    "deploy": "serverless deploy",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "firebase-admin": "^13.0.0",
+    "ioredis": "^5.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^22.0.0",
+    "prisma": "^6.0.0",
+    "typescript": "^5.0.0",
+    "serverless": "^4.0.0",
+    "serverless-offline": "^14.0.0",
+    "serverless-plugin-typescript": "^2.0.0"
+  }
+}

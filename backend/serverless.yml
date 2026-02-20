@@ -1,0 +1,85 @@
+service: jummaechu-backend
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ap-northeast-2  # 서울
+  memorySize: 256
+  timeout: 15
+  environment:
+    NODE_ENV: ${opt:stage, 'dev'}
+    DATABASE_URL: ${env:DATABASE_URL}
+    REDIS_URL: ${env:REDIS_URL}
+    GOOGLE_MAPS_API_KEY: ${env:GOOGLE_MAPS_API_KEY}
+    AI_API_KEY: ${env:AI_API_KEY}
+    FIREBASE_PROJECT_ID: ${env:FIREBASE_PROJECT_ID}
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+functions:
+  # GET /api/places/search
+  placesSearch:
+    handler: src/functions/places/search.handler
+    events:
+      - http:
+          path: /api/places/search
+          method: GET
+          cors: true
+          authorizer:
+            name: firebaseAuthorizer
+            resultTtlInSeconds: 300
+
+  # GET /api/places/details
+  placesDetails:
+    handler: src/functions/places/details.handler
+    events:
+      - http:
+          path: /api/places/details
+          method: GET
+          cors: true
+          authorizer:
+            name: firebaseAuthorizer
+            resultTtlInSeconds: 300
+
+  # POST /api/menu/enrich
+  menuEnrich:
+    handler: src/functions/menu/enrich.handler
+    timeout: 29  # AI API 응답 대기 여유
+    events:
+      - http:
+          path: /api/menu/enrich
+          method: POST
+          cors: true
+          authorizer:
+            name: firebaseAuthorizer
+            resultTtlInSeconds: 300
+
+  # GET /api/user/preferences
+  userPreferencesGet:
+    handler: src/functions/user/preferences.getHandler
+    events:
+      - http:
+          path: /api/user/preferences
+          method: GET
+          cors: true
+          authorizer:
+            name: firebaseAuthorizer
+            resultTtlInSeconds: 300
+
+  # PUT /api/user/preferences
+  userPreferencesPut:
+    handler: src/functions/user/preferences.putHandler
+    events:
+      - http:
+          path: /api/user/preferences
+          method: PUT
+          cors: true
+          authorizer:
+            name: firebaseAuthorizer
+            resultTtlInSeconds: 0
+
+  # Lambda Authorizer (Firebase ID Token 검증)
+  firebaseAuthorizer:
+    handler: src/middleware/authenticate.handler

@@ -1,0 +1,108 @@
+// database.md §2~§4 기반
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Core Entities ─────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique @map("firebase_uid")
+  email       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  preference           UserPreference?
+  recommendationSessions RecommendationSession[]
+  generatedResults     GeneratedResult[]
+
+  @@map("users")
+}
+
+model UserPreference {
+  id               String    @id @default(uuid())
+  userId           String    @unique @map("user_id")
+  excludeTags      String[]  @default([]) @map("exclude_tags")  // text[] — database §7
+  defaultRadiusM   Int       @default(1000) @map("default_radius_m")
+  defaultPriceBand PriceBand? @map("default_price_band")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_preferences")
+}
+
+// ─── Analytics Entities ────────────────────────────────────────────
+
+model RecommendationSession {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")  // 게스트 없음 — NOT NULL
+  lat                 Decimal
+  lng                 Decimal
+  radiusM             Int       @map("radius_m")
+  priceBand           PriceBand? @map("price_band")
+  excludeTagsSnapshot String[]  @map("exclude_tags_snapshot")
+  topPlaceIds         String[]  @map("top_place_ids")  // 추천된 3개 place_id
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user   User                    @relation(fields: [userId], references: [id])
+  clicks RecommendationClick[]
+
+  @@index([userId, createdAt])
+  @@map("recommendation_sessions")
+}
+
+model RecommendationClick {
+  id            String    @id @default(uuid())
+  sessionId     String    @map("session_id")
+  userId        String    @map("user_id")
+  placeId       String    @map("place_id")
+  clickPosition Int       @map("click_position")  // 1~3
+  eventType     ClickEventType @map("event_type")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  session RecommendationSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([placeId, createdAt])
+  @@map("recommendation_clicks")
+}
+
+// ─── AI Cache Entity ───────────────────────────────────────────────
+
+model GeneratedResult {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")   // NULL이면 공용 캐시
+  placeId       String   @map("place_id")
+  content       Json                        // { menus: string[], description: string }
+  promptVersion String   @map("prompt_version")
+  modelName     String?  @map("model_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@unique([placeId, promptVersion, userId])
+  @@index([placeId, createdAt])
+  @@map("generated_results")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────
+
+enum PriceBand {
+  under_10k  @map("under_10k")
+  price_10_15k @map("10_15k")  // TS에서는 '10_15k' 문자열로 사용 — @map으로 DB 저장값 보존
+  over_15k   @map("over_15k")
+}
+
+enum ClickEventType {
+  card_click
+  map_open
+}

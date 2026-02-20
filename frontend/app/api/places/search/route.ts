@@ -33,6 +33,16 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+// ── Fisher-Yates 셔플 ────────────────────────────────────────────────
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 // ── Places API (New) 응답 타입 ────────────────────────────────────────
 interface PlaceResult {
   id?: string
@@ -45,6 +55,52 @@ interface PlaceResult {
   types?: string[]
   editorialSummary?: { text: string }
   photos?: { name: string }[]
+}
+
+const FIELD_MASK = [
+  'places.id',
+  'places.displayName',
+  'places.rating',
+  'places.userRatingCount',
+  'places.priceLevel',
+  'places.location',
+  'places.shortFormattedAddress',
+  'places.types',
+  'places.editorialSummary',
+  'places.photos',
+].join(',')
+
+// ── 단일 Nearby Search 요청 ───────────────────────────────────────────
+async function searchNearby(
+  apiKey: string,
+  lat: number,
+  lng: number,
+  radius: number,
+  rankPreference: 'DISTANCE' | 'POPULARITY',
+): Promise<PlaceResult[]> {
+  const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': FIELD_MASK,
+    },
+    body: JSON.stringify({
+      includedTypes: ['restaurant'],
+      locationRestriction: {
+        circle: {
+          center: { latitude: lat, longitude: lng },
+          radius,
+        },
+      },
+      maxResultCount: 20,
+      rankPreference,
+      languageCode: 'ko',
+    }),
+  })
+  if (!res.ok) return []
+  const data: { places?: PlaceResult[] } = await res.json()
+  return data.places ?? []
 }
 
 export async function GET(request: NextRequest) {
@@ -62,53 +118,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'API 키가 설정되지 않았어요.' }, { status: 500 })
   }
 
-  let res: Response
-  try {
-    res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': [
-          'places.id',
-          'places.displayName',
-          'places.rating',
-          'places.userRatingCount',
-          'places.priceLevel',
-          'places.location',
-          'places.shortFormattedAddress',
-          'places.types',
-          'places.editorialSummary',
-          'places.photos',
-        ].join(','),
-      },
-      body: JSON.stringify({
-        includedTypes: ['restaurant'],
-        locationRestriction: {
-          circle: {
-            center: { latitude: lat, longitude: lng },
-            radius,
-          },
-        },
-        maxResultCount: 20,
-        languageCode: 'ko',
-      }),
-    })
-  } catch (err) {
-    console.error('[Places API] 네트워크 오류:', err)
-    return NextResponse.json({ message: '음식점 검색 중 네트워크 오류가 발생했어요.' }, { status: 502 })
+  // 거리순 + 인기순 두 가지 정렬로 병렬 조회 → 최대 40개 후보 확보
+  const [distResult, popResult] = await Promise.allSettled([
+    searchNearby(apiKey, lat, lng, radius, 'DISTANCE'),
+    searchNearby(apiKey, lat, lng, radius, 'POPULARITY'),
+  ])
+
+  // 중복 제거 (placeId 기준)
+  const seen = new Set<string>()
+  const merged: PlaceResult[] = []
+  for (const result of [distResult, popResult]) {
+    if (result.status === 'fulfilled') {
+      for (const place of result.value) {
+        if (place.id && !seen.has(place.id)) {
+          seen.add(place.id)
+          merged.push(place)
+        }
+      }
+    }
   }
 
-  if (!res.ok) {
-    const errorText = await res.text()
-    console.error('[Places API] 오류 응답:', errorText)
-    return NextResponse.json({ message: '음식점 검색에 실패했어요. API 키를 확인해주세요.' }, { status: 502 })
+  if (merged.length === 0) {
+    return NextResponse.json({ message: '주변에서 음식점을 찾지 못했어요.' }, { status: 404 })
   }
 
-  const data: { places?: PlaceResult[] } = await res.json()
-  const places = data.places ?? []
+  // 서버에서 셔플 → 같은 위치/반경이어도 매 요청마다 다른 순서로 반환
+  const shuffled = shuffle(merged)
 
-  const restaurants: Restaurant[] = places.map((place) => {
+  const restaurants: Restaurant[] = shuffled.map((place) => {
     const rLat = place.location?.latitude ?? lat
     const rLng = place.location?.longitude ?? lng
     return {
@@ -125,11 +162,12 @@ export async function GET(request: NextRequest) {
       photoUrl: place.photos?.[0]?.name
         ? `https://places.googleapis.com/v1/${place.photos[0].name}/media?maxWidthPx=400&key=${apiKey}`
         : null,
-      // Place ID가 있으면 실제 음식점 페이지로, 없으면 좌표 핀으로
       mapUrl: place.id
         ? `https://www.google.com/maps/place/?q=place_id:${place.id}`
         : `https://maps.google.com/?q=${rLat},${rLng}`,
-      representativeMenus: [], // Phase 3 — AI 메뉴 보강 시 추가
+      representativeMenus: [],
+      tags: [],
+      excluded: false,
       description: place.editorialSummary?.text ?? null,
     }
   })

@@ -65,6 +65,8 @@ export interface Restaurant {
   mapUrl: string                // Google Maps 딥링크
   // AI 메뉴 보강 결과 (POST /api/menu/enrich)
   representativeMenus: string[] // 대표 메뉴 1~3개
+  tags: ExcludeTag[]            // AI가 분류한 음식 특성 태그 (필터링에 활용)
+  excluded: boolean             // customExcludes 기준 AI 제외 판정 결과
   description: string | null    // 한 줄 설명
 }
 

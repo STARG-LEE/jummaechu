@@ -70,8 +70,8 @@
 
 | 상태 | 우선순위 | 결정 항목 | 비고 |
 |------|----------|-----------|------|
-| `[!]` | P0 | `price_level(0~4)` → `PriceBand` 매핑 규칙 확정 및 문서화 | Places 검색 결과 파싱 로직에 직접 영향 |
-| `[!]` | P0 | "가격 정보 없음" 음식점 처리 방법 결정 (포함 후순위 vs 제외) | 랭킹 로직 구현에 직접 영향 |
+| `[x]` | P0 | `priceLevel` Enum → `PriceBand` 매핑 규칙 확정 | INEXPENSIVE/MODERATE/EXPENSIVE/VERY_EXPENSIVE → under_10k/10_15k/over_15k/over_15k |
+| `[x]` | P0 | "가격 정보 없음" 음식점 처리 방법 결정 (포함 후순위 vs 제외) | **확정**: 포함, 가격 정보 없음 표시, 랭킹 하위 배치 |
 | `[!]` | P1 | GeneratedResult 공용 캐시(user_id=NULL) vs 개인화 캐시 병행 여부 결정 | enrich API 캐시 조회 쿼리 로직 결정 |
 | `[!]` | P1 | Geolocation 캐시 키 좌표 정밀도 결정 (소수점 몇 자리 rounding) | 같은 건물 내 요청 캐시 히트율에 영향 |
 
@@ -163,8 +163,8 @@
 
 | ID | 항목 | 상태 | 관련 Phase |
 |----|------|------|-----------|
-| U-1 | `price_level(0~4)` → `PriceBand` 매핑 규칙 | **BLOCKING** — Phase 3 시작 전 결정 필요 | Phase 3 |
-| U-2 | "가격 정보 없음" 음식점 처리 (포함 후순위 vs 제외) | **BLOCKING** — Phase 3 시작 전 결정 필요 | Phase 3 |
+| U-1 | `priceLevel` → `PriceBand` 매핑 규칙 | **확정**: Places API (New)는 Enum 반환 — INEXPENSIVE→under_10k / MODERATE→10_15k / EXPENSIVE·VERY_EXPENSIVE→over_15k / UNSPECIFIED→null | Phase 3 |
+| U-2 | "가격 정보 없음" 음식점 처리 (포함 후순위 vs 제외) | **확정**: 포함, 가격 정보 없음 표시, 랭킹 하위 배치 | Phase 3 |
 | U-3 | "다시 추천받기" 동작 | **확정**: 상위 10개 후보 풀 캐싱 후 무작위 3개 셔플 | Phase 3 |
 | U-4 | Geolocation 캐시 키 좌표 정밀도 | 미결정 — Redis 캐시 키 설계 전 결정 필요 | Phase 3 |
 | U-5 | 로고/서비스명 폰트 (Pretendard Bold vs 별도 디스플레이 폰트) | 미결정 — 개발 차단 없음 | Phase 5 |

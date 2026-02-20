@@ -45,8 +45,18 @@ jummaechu/
 - `UserPreference` 필드명: `defaultRadiusM` (frontend/backend 통일)
 - `PlaceResult`(backend) ↔ `Restaurant`(frontend): `category: RestaurantCategory` 필드 포함
 
+## Places API (New) 핵심 사항
+- `priceLevel`: 숫자 0~4 아님 — Enum 문자열 반환
+  - `PRICE_LEVEL_INEXPENSIVE` → `under_10k`
+  - `PRICE_LEVEL_MODERATE` → `10_15k`
+  - `PRICE_LEVEL_EXPENSIVE` / `PRICE_LEVEL_VERY_EXPENSIVE` → `over_15k`
+  - `PRICE_LEVEL_UNSPECIFIED` → `null`
+- `photos[].name` 값은 만료됨 — 장기 캐싱 불가, Place Details 재호출 필요
+- `rating`, `priceLevel`, `photos` → Enterprise SKU (월 $200 무료 크레딧 내 운용)
+- `editorialSummary` 내장 AI 요약 활용 가능 → `/api/menu/enrich`의 description 대체 검토
+
 ## Phase 3 시작 전 BLOCKING 결정 필요
-- `price_level(0~4)` → `PriceBand` 매핑 규칙
+- ~~`price_level(0~4)` → `PriceBand` 매핑 규칙~~ (확정됨, 위 참조)
 - "가격 정보 없음" 음식점 처리 방법
 - GeneratedResult 공용 캐시 vs 개인화 캐시 병행 여부
 - Geolocation 캐시 키 좌표 정밀도

@@ -1,0 +1,25 @@
+/* Tailwind CSS v4 */
+@import 'tailwindcss';
+
+/* tailwind.config.ts 에서 정의한 디자인 토큰 로드 */
+@config '../tailwind.config.ts';
+
+/* 기본 레이어 */
+@layer base {
+  html {
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont,
+      'Apple SD Gothic Neo', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #fafaf9; /* light.base */
+    color: #1c1917;            /* light.text-primary */
+  }
+
+  .dark body {
+    background-color: #0c0a09; /* dark.base */
+    color: #fafaf9;            /* dark.text-primary */
+  }
+}

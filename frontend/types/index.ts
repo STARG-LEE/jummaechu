@@ -1,6 +1,6 @@
 // ─── 필터 관련 타입 ───────────────────────────────────────────────
 
-export type Radius = 500 | 1000 | 2000
+export type Radius = 300 | 500 | 700 | 1000
 
 export type PriceBand = 'under_10k' | '10_15k' | 'over_15k'
 
@@ -21,6 +21,11 @@ export type ExcludeTag =
   | 'gluten'      // 밀가루(글루텐)
   | 'pork'        // 돼지고기
   | 'seafood'     // 해산물
+  | 'chicken'     // 닭고기
+  | 'beef'        // 소고기
+  | 'egg'         // 계란
+  | 'nuts'        // 견과류
+  | 'soy'         // 콩·두부
 
 export const EXCLUDE_TAG_LABEL: Record<ExcludeTag, string> = {
   spicy: '매운 음식',
@@ -32,6 +37,11 @@ export const EXCLUDE_TAG_LABEL: Record<ExcludeTag, string> = {
   gluten: '밀가루',
   pork: '돼지고기',
   seafood: '해산물',
+  chicken: '닭고기',
+  beef: '소고기',
+  egg: '계란',
+  nuts: '견과류',
+  soy: '콩·두부',
 }
 
 // ─── 음식점 관련 타입 ─────────────────────────────────────────────
@@ -45,7 +55,9 @@ export interface Restaurant {
   name: string
   category: RestaurantCategory
   address: string
-  distanceM: number
+  lat: number
+  lng: number
+  distanceM: number   // 사용자 위치로부터 계산된 거리 (m)
   rating: number
   userRatingsTotal: number
   priceBand: PriceBand | null   // Google Places price_level 매핑

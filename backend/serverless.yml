@@ -14,8 +14,12 @@ provider:
     AI_API_KEY: ${env:AI_API_KEY}
     FIREBASE_PROJECT_ID: ${env:FIREBASE_PROJECT_ID}
 
+build:
+  esbuild:
+    bundle: true
+    target: node22
+
 plugins:
-  - serverless-plugin-typescript
   - serverless-offline
 
 functions:

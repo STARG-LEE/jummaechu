@@ -135,7 +135,6 @@ export default function RecommendPage() {
               name: r.name,
               category: r.category,
               address: r.address,
-              placeId: r.placeId,
               excludeKeywords: customExcludes.length > 0 ? customExcludes : undefined,
             }),
           })

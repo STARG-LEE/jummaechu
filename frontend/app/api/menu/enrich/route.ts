@@ -1,40 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// ── Google Places Details → 실제 리뷰 + 소개글 조회 ───────────────────
-async function fetchPlaceContext(placeId: string, mapsKey: string): Promise<string> {
-  try {
-    const res = await fetch(
-      `https://places.googleapis.com/v1/places/${placeId}`,
-      {
-        headers: {
-          'X-Goog-Api-Key': mapsKey,
-          'X-Goog-FieldMask': 'reviews,editorialSummary',
-        },
-      },
-    )
-    if (!res.ok) return ''
-    const data = await res.json()
-
-    const summary: string = data.editorialSummary?.text ?? ''
-    const reviews: string[] = (data.reviews ?? [])
-      .slice(0, 3)
-      .map((r: { text?: { text?: string } }) => r.text?.text ?? '')
-      .filter(Boolean)
-      .map((t: string) => t.slice(0, 300)) // 리뷰 1개당 최대 300자
-
-    if (!summary && reviews.length === 0) return ''
-
-    return [
-      summary ? `음식점 소개: ${summary}` : '',
-      reviews.length > 0 ? `실제 고객 리뷰:\n${reviews.map((t) => `- ${t}`).join('\n')}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n')
-  } catch {
-    return '' // 실패 시 무시 — 이름·카테고리만으로 GPT 분석
-  }
-}
-
 // ── OpenAI gpt-4o-mini를 이용한 대표 메뉴 + 태그 + 제외 판정 ────────────
 export async function POST(request: NextRequest) {
   let body: {
@@ -50,7 +15,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: '잘못된 요청 형식이에요.' }, { status: 400 })
   }
 
-  const { name, category, address, excludeKeywords, placeId } = body
+  const { name, category, address, excludeKeywords } = body
   if (!name || !category) {
     return NextResponse.json({ message: '음식점 정보가 필요합니다.' }, { status: 400 })
   }
@@ -60,11 +25,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'AI 서비스 키가 설정되지 않았어요.' }, { status: 500 })
   }
 
-  // Google Places 실제 데이터 조회 (placeId가 있을 때만)
-  const mapsKey = process.env.GOOGLE_MAPS_API_KEY
-  const placeContext =
-    placeId && mapsKey ? await fetchPlaceContext(placeId, mapsKey) : ''
-
   // 제외 키워드가 있으면 판정 지시 + excluded 필드 추가
   const exclusionInstruction =
     excludeKeywords && excludeKeywords.length > 0
@@ -73,7 +33,7 @@ export async function POST(request: NextRequest) {
       : ''
 
   const systemContent =
-    '당신은 한국 음식점 분석 전문가입니다. 주어진 음식점 정보(소개글, 실제 고객 리뷰 등)를 바탕으로 대표 메뉴 3~5개와 음식 특성 태그를 분석해주세요.\n' +
+    '당신은 한국 음식점 분석 전문가입니다. 주어진 음식점의 대표 메뉴 3~5개와 음식 특성 태그를 분석해주세요.\n' +
     '태그는 아래 목록 중 해당하는 것만 선택하세요 (영문 키값 그대로 사용):\n' +
     '  spicy(매운 음식), raw(날 음식·회), coriander(고수), offal(내장류),\n' +
     '  mala(마라·강한향신료), dairy(유제품), gluten(밀가루·글루텐),\n' +
@@ -101,14 +61,13 @@ export async function POST(request: NextRequest) {
               `음식점명: ${name}`,
               `카테고리: ${category}`,
               address ? `주소: ${address}` : '',
-              placeContext, // Google Places 실제 리뷰·소개글
             ]
               .filter(Boolean)
               .join('\n'),
           },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 300,
+        max_tokens: 250,
         temperature: 0.3,
       }),
     })

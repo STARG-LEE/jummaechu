@@ -56,8 +56,9 @@
    - (예: '매운 음식' 비선호 → 마라탕·불닭 전문점 제외)
 
 3. **AI 기반 메뉴 정보 보강**
-   - 생성형 AI API(예: Claude / GPT)를 활용해 각 음식점의 **대표 메뉴 정보**를 검색·보완
-   - 음식점명, 카테고리, 대표 메뉴, 가격대, 거리 정보를 카드 형태로 제공
+   - OpenAI gpt-4o-mini를 활용해 각 음식점의 **대표 메뉴 3~5개 + 음식 특성 태그**를 분석
+   - 비선호 키워드와 매칭되는 음식점은 `excluded: true`로 자동 제외
+   - 음식점명, 카테고리, 대표 메뉴, 가격대, 거리, 사진 정보를 카드 형태로 제공
 
 ---
 
@@ -71,12 +72,15 @@
    └─ 탐색 반경 선택 (500m / 1km / 2km)
    └─ 가격대 선택 (1만원 이하 / 1~1.5만원 / 1.5만원 이상)
 
-3. 결과 확인
-   └─ 비선호 음식 필터 적용 후 추천 음식점 3곳 카드 표시
-   └─ 카드 정보: 음식점명 · 카테고리 · 대표 메뉴 · 가격대 · 거리
+3. Tinder 카드 추천
+   └─ 비선호 필터(excluded) 적용 후 음식점 1장씩 카드 표시
+   └─ 카드 정보: 음식점명 · 카테고리 · 대표 메뉴(AI 보강) · 태그 · 평점 · 거리 · 가격대 · 사진
+   └─ 좋아요(❤️) → Google Maps 새 탭 열기 (길찾기)
+   └─ 싫어요(✕) → 해당 카테고리 재등장 확률 감소 → 다음 카드
 
-4. 선택
-   └─ 카드 선택 → Google Maps로 연결 (경로 안내)
+4. 반복
+   └─ 마음에 드는 카드가 나올 때까지 계속 스와이프
+   └─ 모든 후보 소진 시 "후보가 모두 소진되었어요" 안내
 ```
 
 ---
@@ -128,15 +132,15 @@
 
 | 역할 | 사용 기술 |
 |------|----------|
-| Frontend | Next.js (React) + TypeScript |
-| Hosting/Infra | AWS CloudFront + S3 (프론트) + Lambda + API Gateway (백엔드) |
-| Authentication | Firebase Authentication |
+| Frontend + API | Next.js 15 (React) + TypeScript (App Router + API Routes) |
+| Hosting/Infra | **AWS Amplify** (Next.js SSR + API Routes 통합 배포) |
+| Authentication | Firebase Authentication — Google 소셜 로그인 (Phase 1 예정) |
 | 위치 정보 | Browser Geolocation API |
-| 음식점 검색 | Google Maps Places API |
-| 가격 정보 | Google Maps Places API (price_level / reviews) |
-| 메뉴 정보 보강 | 생성형 AI API (Claude / GPT) |
-| 데이터 저장 | AWS RDS PostgreSQL + Redis (ElastiCache), LocalStorage는 캐시/임시 저장 |
-| 외부 연결 | Google Maps URL Scheme (경로 안내) |
+| 음식점 검색 | Google Maps Places API (New) — Nearby Search, 병렬 DISTANCE+POPULARITY |
+| 가격 정보 | Google Maps Places API (priceLevel Enum) |
+| 메뉴 정보 보강 | OpenAI gpt-4o-mini (name+category+address 기반, reviews 제외) |
+| 데이터 저장 | AWS RDS PostgreSQL + Redis (ElastiCache) — Phase 2/3 예정 |
+| 외부 연결 | Google Maps URL Scheme (좋아요 → 경로 안내) |
 
 
 ---
